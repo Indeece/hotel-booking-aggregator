@@ -1,0 +1,37 @@
+server:
+  port: 4000
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: auth-service-public
+          uri: http://auth-service:8081
+          predicates:
+            - Path=/api/v1/auth/register, /api/v1/auth/login, /api/v1/auth/refresh
+
+        - id: auth-service-secured
+          uri: http://auth-service:8081
+          predicates:
+            - Path=/api/v1/users/**
+          filters:
+            - JwtAuthenticationFilter
+
+        - id: hotel-service
+          uri: http://hotel-service:8082
+          predicates:
+            - Path=/api/v1/hotels/**
+          filters:
+            - JwtAuthenticationFilter
+
+        - id: booking-service
+          uri: http://booking-service:8083
+          predicates:
+            - Path=/api/v1/bookings/**
+          filters:
+            - JwtAuthenticationFilter
+
+jwt:
+  secret: "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970"
