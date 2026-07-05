@@ -13,7 +13,7 @@ spring:
       ddl-auto: validate
     show-sql: true
   liquibase:
-    change-log: classpath:db/changelog/db.changelog-master.xml
+    change-log: classpath:db/changelog/db.changelog-master.yaml
   data:
     redis:
       host: ${REDIS_HOST:localhost}
