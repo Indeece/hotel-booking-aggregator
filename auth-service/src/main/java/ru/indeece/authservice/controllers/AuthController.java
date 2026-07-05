@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.indeece.authservice.dto.AuthResponse;
 import ru.indeece.authservice.dto.LoginRequest;
 import ru.indeece.authservice.dto.RegisterRequest;
+import ru.indeece.authservice.enums.Role;
 import ru.indeece.authservice.repository.UserRepository;
 import ru.indeece.authservice.security.JwtService;
 import ru.indeece.authservice.entities.User;
@@ -32,7 +33,7 @@ public class AuthController {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole());
+        user.setRole(Role.CLIENT);
         user.setBalance(BigDecimal.valueOf(10000));
 
         userRepository.save(user);
