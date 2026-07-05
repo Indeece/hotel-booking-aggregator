@@ -7,5 +7,5 @@ RUN gradle bootJar -x test --no-daemon
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=builder /app/build/libs/*.jar app.jar
-EXPOSE 8082
+EXPOSE 4000
 ENTRYPOINT ["java", "-jar", "app.jar"]

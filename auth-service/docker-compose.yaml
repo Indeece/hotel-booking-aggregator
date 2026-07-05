@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  auth-postgres:
+    image: postgres:15-alpine
+    container_name: auth_postgres_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: auth_db
+    ports:
+      - "5431:5432"
+    volumes:
+      - auth_postgres_data:/var/lib/postgresql/data
+    networks:
+      - hotel_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  auth-redis:
+    image: redis:7-alpine
+    container_name: auth_redis_cache
+    ports:
+      - "6371:6379"
+    volumes:
+      - auth_redis_data:/data
+    networks:
+      - hotel_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auth_service_app
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_AUTH_HOST=auth-postgres
+      - DB_AUTH_PORT=5432
+      - DB_AUTH_NAME=auth_db
+      - DB_AUTH_USER=postgres
+      - DB_AUTH_PASSWORD=postgres
+      - REDIS_HOST=auth-redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
+      auth-redis:
+        condition: service_healthy
+    networks:
+      - hotel_network
+
+volumes:
+  auth_postgres_data:
+  auth_redis_data:
+
+networks:
+  hotel_network:
+    external: true
