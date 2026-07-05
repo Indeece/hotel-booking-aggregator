@@ -1,28 +1,35 @@
 package ru.indeece.hotelservice.entities;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "rooms")
-@Data
+@Getter
+@Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class Room {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false)
-    private String number;
+    private String roomNumber;
 
     @Column(nullable = false)
-    private BigDecimal price;
+    private String type;
 
     @Column(nullable = false)
-    private boolean available;
+    private BigDecimal pricePerNight;
 
-    @ManyToOne
+    @Column(nullable = false)
+    private Integer capacity;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hotel_id")
     private Hotel hotel;
 }
