@@ -1,6 +1,7 @@
 package ru.indeece.bookingservice.entities;
 
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Data;
 import ru.indeece.bookingservice.enums.BookingStatus;
 
@@ -10,6 +11,7 @@ import java.time.LocalDateTime;
 @Entity
 @Data
 @Table(name = "bookings")
+@Builder
 public class Booking {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
