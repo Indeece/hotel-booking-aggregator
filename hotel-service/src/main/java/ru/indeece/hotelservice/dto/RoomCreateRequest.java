@@ -11,10 +11,8 @@ public record RoomCreateRequest(
         @NotBlank
         String type,
 
-        @NotBlank
         BigDecimal pricePerNight,
 
-        @NotBlank
         Integer capacity
 ) {
 }

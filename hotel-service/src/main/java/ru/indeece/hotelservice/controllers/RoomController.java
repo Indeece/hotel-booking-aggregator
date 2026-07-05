@@ -18,7 +18,7 @@ import java.util.List;
 public class RoomController {
 
     private final RoomService roomService;
-    private static final String ROLE_MANAGER = "HOTEL_MANAGER";
+    private static final String ROLE_MANAGER = "MANAGER";
 
     @GetMapping("/hotels/{hotelId}/rooms")
     public ResponseEntity<List<RoomDto>> getRoomsByHotel(@PathVariable Long hotelId) {
@@ -30,7 +30,7 @@ public class RoomController {
         return ResponseEntity.ok(roomService.getRoomById(id));
     }
 
-    @PostMapping("/hotels/{hotelId}/rooms")
+    @PostMapping("/hotels/{hotelId}/rooms/create")
     public ResponseEntity<RoomDto> createRoom(
             @RequestHeader(value = "X-User-Role", required = false) String role,
             @PathVariable Long hotelId,
@@ -40,7 +40,7 @@ public class RoomController {
         return new ResponseEntity<>(roomService.createRoom(hotelId, request), HttpStatus.CREATED);
     }
 
-    @PutMapping("/rooms/{id}")
+    @PutMapping("/rooms/update/{id}")
     public ResponseEntity<RoomDto> updateRoom(
             @RequestHeader(value = "X-User-Role", required = false) String role,
             @PathVariable Long id,

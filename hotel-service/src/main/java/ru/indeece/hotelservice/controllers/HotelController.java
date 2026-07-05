@@ -18,7 +18,7 @@ import java.util.List;
 public class HotelController {
 
     private final HotelService hotelService;
-    private static final String ROLE_MANAGER = "HOTEL_MANAGER";
+    private static final String ROLE_MANAGER = "MANAGER";
 
     @GetMapping
     public ResponseEntity<List<HotelDto>> getHotelsByCity(@RequestParam String city) {
@@ -30,7 +30,7 @@ public class HotelController {
         return ResponseEntity.ok(hotelService.findHotelById(id));
     }
 
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<HotelDto> createHotel(
             @RequestHeader(value = "X-User-Role", required = false) String role,
             @Valid @RequestBody HotelCreateRequest request) throws AccessDeniedException {
@@ -39,7 +39,7 @@ public class HotelController {
         return new ResponseEntity<>(hotelService.createHotel(request), HttpStatus.CREATED);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/update/{id}")
     public ResponseEntity<HotelDto> updateHotel(
             @RequestHeader(value = "X-User-Role", required = false) String role,
             @PathVariable Long id,
