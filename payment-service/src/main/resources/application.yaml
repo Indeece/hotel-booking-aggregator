@@ -42,3 +42,5 @@ management:
 services:
   auth:
     url: ${AUTH_SERVICE_URL:http://auth-service:8081}
+  hotel:
+    url: ${HOTEL_SERVICE_URL:http://hotel-service:8082}

@@ -9,12 +9,14 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.indeece.paymentservice.dto.RoomDto;
 import ru.indeece.paymentservice.enums.PaymentStatus;
 import ru.indeece.paymentservice.utils.AuthServiceClient;
 import ru.indeece.paymentservice.dto.OrderCreatedEvent;
 import ru.indeece.paymentservice.dto.PaymentResultEvent;
 import ru.indeece.paymentservice.entities.Transaction;
 import ru.indeece.paymentservice.repositories.TransactionRepository;
+import ru.indeece.paymentservice.utils.RoomServiceClient;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -27,6 +29,7 @@ public class PaymentProcessor {
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final TransactionRepository transactionRepository;
     private final AuthServiceClient authServiceClient;
+    private final RoomServiceClient roomServiceClient;
 
     @KafkaListener(topics = "order-created-events", groupId = "payment-group")
     @Transactional
@@ -34,9 +37,21 @@ public class PaymentProcessor {
         OrderCreatedEvent event = record.value();
         Long bookingId = event.bookingId();
         log.info("Got a payment event: {}", event);
-        BigDecimal amountToDeduct = BigDecimal.valueOf(5000.00); // TODO заглушка, потом поменять
 
         boolean isSuccess = false;
+        BigDecimal amountToDeduct;
+
+        try {
+            RoomDto room = roomServiceClient.getRoomById(event.roomId());
+            amountToDeduct = room.pricePerNight();
+        } catch (FeignException.NotFound e) {
+            log.error("Room #{} not found in hotel-service", event.roomId());
+            return;
+        } catch (Exception e) {
+            log.error("Critical connection error with Hotel Service: {}", e.getMessage());
+            return;
+        }
+
         try {
             ResponseEntity<String> response = authServiceClient.deductBalance(event.userId(), amountToDeduct);
 
