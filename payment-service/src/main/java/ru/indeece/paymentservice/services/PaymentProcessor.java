@@ -32,7 +32,7 @@ public class PaymentProcessor {
     @Transactional
     public void processPayment(ConsumerRecord<String, OrderCreatedEvent> record) {
         OrderCreatedEvent event = record.value();
-        Long bookingId = event.id();
+        Long bookingId = event.bookingId();
         log.info("Got a payment event: {}", event);
         BigDecimal amountToDeduct = BigDecimal.valueOf(5000.00); // TODO заглушка, потом поменять
 

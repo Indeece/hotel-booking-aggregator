@@ -1,7 +1,7 @@
 package ru.indeece.paymentservice.dto;
 
 public record OrderCreatedEvent(
-        Long id,
+        Long bookingId,
         Long userId,
         Long roomId
 ) {}

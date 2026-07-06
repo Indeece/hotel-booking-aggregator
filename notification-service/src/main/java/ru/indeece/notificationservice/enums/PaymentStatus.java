@@ -1,4 +1,4 @@
-package ru.indeece.notificationservice;
+package ru.indeece.notificationservice.enums;
 
 public enum PaymentStatus {
     SUCCESS, FAILURE
