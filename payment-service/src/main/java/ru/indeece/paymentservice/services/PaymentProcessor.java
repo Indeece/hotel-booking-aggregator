@@ -1,8 +1,10 @@
 package ru.indeece.paymentservice.services;
 
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
@@ -32,13 +34,25 @@ public class PaymentProcessor {
         OrderCreatedEvent event = record.value();
         Long bookingId = event.id();
         log.info("Got a payment event: {}", event);
+        BigDecimal amountToDeduct = BigDecimal.valueOf(5000.00); // TODO заглушка, потом поменять
 
         boolean isSuccess = false;
         try {
-            isSuccess = authServiceClient.deductBalance(event.userId(), 5000.0);
-            log.info("Response from client: {}", isSuccess);
+            ResponseEntity<String> response = authServiceClient.deductBalance(event.userId(), amountToDeduct);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                isSuccess = true;
+                log.info("Payment successful! Auth Service response: {}", response.getBody());
+            }
+
+        } catch (FeignException.BadRequest e) {
+            log.error("Payment refused for user #{}. Reason: {}", event.userId(), e.contentUTF8());
+            isSuccess = false;
+        } catch (FeignException.NotFound e) {
+            log.error("User #{} not found in the system", event.userId());
+            isSuccess = false;
         } catch (Exception e) {
-            log.error("Issue: {}", e.getMessage());
+            log.error("Critical connection error with Auth Service: {}", e.getMessage());
             isSuccess = false;
         }
 

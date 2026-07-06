@@ -1,16 +1,18 @@
 package ru.indeece.paymentservice.entities;
 
 import jakarta.persistence.*;
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 import ru.indeece.paymentservice.enums.PaymentStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Data
 @Table(name = "transactions")
+@NoArgsConstructor
+@AllArgsConstructor
+@Setter
+@Getter
 @Builder
 public class Transaction {
     @Id
