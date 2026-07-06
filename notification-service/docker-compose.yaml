@@ -3,7 +3,7 @@ version: '3.8'
 services:
   notification-service:
     build:
-      context: ./notification-service
+      context: .
       dockerfile: Dockerfile
     container_name: notification-service
     ports:
@@ -11,9 +11,6 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=prod
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-    depends_on:
-      kafka:
-        condition: service_healthy
     networks:
       - hotel_network
 
@@ -25,3 +22,7 @@ services:
       - "1025:1025"
     networks:
       - hotel_network
+
+networks:
+  hotel_network:
+    external: true
