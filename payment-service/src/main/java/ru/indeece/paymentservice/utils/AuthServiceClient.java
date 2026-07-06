@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.math.BigDecimal;
 
-@FeignClient(name = "auth-service", url = "${services.auth.url")
+@FeignClient(name = "auth-service", url = "${services.auth.url}")
 public interface AuthServiceClient {
     @PutMapping("/api/v1/users/{id}/balance/deduct")
     ResponseEntity<String> deductBalance(
