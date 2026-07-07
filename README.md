@@ -1,12 +1,9 @@
 # Hotel Booking Aggregator
 
-A microservice-based hotel booking platform built from scratch to explore how independent Spring Boot services can talk to each other reliably — through synchronous REST calls where consistency matters immediately, and through Kafka events where it doesn't.
+A microservice-based hotel booking platform built from scratch to explore how independent Spring Boot services can talk to each other reliably - through synchronous REST calls where consistency matters immediately, and through Kafka events where it doesn't.
 
-The system covers the full lifecycle of a booking: a user registers, browses hotels, reserves a room, gets charged, and receives an email confirming whether the payment went through — with each of those steps owned by a different service and a different database.
+The system covers the full lifecycle of a booking: a user registers, browses hotels, reserves a room, gets charged, and receives an email confirming whether the payment went through - with each of those steps owned by a different service and a different database.
 
-## Why this project exists
-
-Most tutorial-style microservice demos stop at "service A calls service B." This one goes a step further and works through the problems you actually run into once you wire real services together over Docker networks and a real Kafka broker: consumers crashing on class name mismatches across service boundaries, `depends_on` not working the way you'd expect across separate compose files, Hibernate schema validation catching drift between an entity and the database, and a payment amount that started life as a hardcoded placeholder before being wired up to a real pricing lookup. None of that shows up in a "hello world" microservices tutorial, and figuring it out was most of the actual work here.
 
 ## Architecture
 
@@ -16,13 +13,13 @@ Most tutorial-style microservice demos stop at "service A calls service B." This
                          │  :4000      │  validates JWT, injects
                          └──────┬──────┘  X-User-Id / X-User-Role
                                 │
-        ┌───────────────┬──────┴────────┬────────────────┐
-        ▼               ▼               ▼                
-┌───────────────┐ ┌─────────────┐ ┌────────────────┐
-│  auth-service  │ │hotel-service│ │ booking-service│
-│     :8081      │ │    :8082    │ │     :8083      │
-│ Postgres+Redis │ │Postgres+Redis│ │   Postgres     │
-└───────────────┘ └─────────────┘ └───────┬────────┘
+        ┌───────────────┬───────┴────────┬────────────┐
+        ▼               ▼                ▼                
+┌───────────────┐ ┌──────────────┐  ┌────────────────┐
+│  auth-service │ │hotel-service │  │booking-service │
+│     :8081     │ │    :8082     │  │     :8083      │
+│ Postgres+Redis│ │Postgres+Redis│  │   Postgres     │
+└───────────────┘ └──────────────┘  └───────┬────────┘
                                             │ order-created-events
                                             ▼
                                    ┌─────────────────┐
@@ -34,18 +31,15 @@ Most tutorial-style microservice demos stop at "service A calls service B." This
                               ┌─────────────┴─────────────┐
                               ▼                           ▼
                     ┌───────────────────┐         ┌──────────────┐
-                    │ booking-service    │         │notification- │
-                    │ (updates status)   │         │  service     │
+                    │ booking-service   │         │notification- │
+                    │ (updates status)  │         │  service     │
                     └───────────────────┘         │   :8085      │
-                                                    │ + Mailpit    │
-                                                    └──────────────┘
+                                                  │ + Mailpit    │
+                                                  └──────────────┘
 ```
 
-Everything user-facing goes through the **API Gateway** (Spring Cloud Gateway), which is the only service that understands JWTs. Routes are split into public and secured groups: `/api/v1/auth/register`, `/login`, and `/refresh` pass straight through, while everything else — user profile/balance, hotels, bookings — goes through a custom `JwtAuthenticationFilter` first. The filter validates the token and rewrites the request with two headers, `X-User-Id` and `X-User-Role`; every internal service trusts those headers rather than re-validating tokens itself. That keeps auth logic in exactly one place.
+Everything user-facing goes through the **API Gateway**, which is the only service that understands JWTs. Routes are split into public and secured groups: `/api/v1/auth/register`, `/login`, and `/refresh` pass straight through, while everything else - user profile/balance, hotels, bookings — goes through a custom `JwtAuthenticationFilter` first. The filter validates the token and rewrites the request with two headers, `X-User-Id` and `X-User-Role`; every internal service trusts those headers rather than re-validating tokens itself. That keeps auth logic in exactly one place.
 
-One thing worth knowing if you're testing hotel search directly: `hotel-service`'s own controller allows anonymous `GET` requests for browsing hotels and rooms, but the gateway route for `/api/v1/hotels/**` currently applies the JWT filter to everything, GETs included. So browsing hotels through the gateway still requires a token today, even though the service itself doesn't need one — worth splitting into a public/secured route pair the same way auth-service is set up, if anonymous browsing through the gateway matters.
-
-Everything past the booking step is event-driven. `booking-service` doesn't know or care whether a payment succeeds — it fires an event and moves on. `payment-service` doesn't know or care who needs to be notified — it just reports the outcome. That decoupling is the actual point of using Kafka here rather than chaining synchronous calls.
 
 ## Services
 
@@ -58,7 +52,8 @@ Everything past the booking step is event-driven. `booking-service` doesn't know
 | `payment-service` | 8084 | Postgres | Charges the user's balance for a booking, records transactions |
 | `notification-service` | 8085 | — | Sends email confirmations via Mailpit |
 
-Auth and Hotel each keep a Redis cache alongside Postgres — Auth uses it for refresh tokens, Hotel uses it to cache hotel/room lookups (`@Cacheable` on city search and hotel details, invalidated on any write).
+Auth and Hotel each keep a Redis cache alongside Postgres - Auth uses it for refresh tokens, Hotel uses it to cache hotel/room lookups (`@Cacheable` on city search and hotel details, invalidated on any write).
+
 
 ## The booking flow, end to end
 
@@ -68,13 +63,10 @@ This is the part that took the most iteration to get right, so it's worth spelli
 2. **booking-service** checks the requested dates don't overlap an existing booking for that room, saves the booking as `PENDING`, and publishes an `OrderCreatedEvent` (`bookingId`, `userId`, `roomId`) to the `order-created-events` topic.
 3. **payment-service** picks up the event, calls `hotel-service` (via Feign) to look up the room's actual `pricePerNight`, then calls `auth-service` to deduct that amount from the user's balance.
 4. Depending on the outcome, `payment-service` publishes a `PaymentResultEvent` to either `payment-success-events` or `payment-failed-events`.
-5. **booking-service** and **notification-service** both consume those topics independently — booking-service flips the booking to `CONFIRMED` or `REJECTED`, notification-service sends an email through Mailpit.
+5. **booking-service** and **notification-service** both consume those topics independently - booking-service flips the booking to `CONFIRMED` or `REJECTED`, notification-service sends an email through Mailpit.
 
 Nobody in this chain calls anybody else back synchronously after step 2. If `notification-service` is down, bookings still get confirmed and charged correctly; the email just goes out once it's back up.
 
-### A note on cross-service Kafka payloads
-
-Each service defines its own local copy of `OrderCreatedEvent` / `PaymentResultEvent` in its own package rather than sharing a DTO module. That's a deliberate simplification for a project this size, but it has one real consequence: Spring Kafka's default `JsonDeserializer` behavior is to read the sender's fully-qualified class name from a message header and look for that exact class on the receiving side — which fails immediately when the receiving service lives in a different package. Every consumer here is configured with `ErrorHandlingDeserializer` and an explicit `spring.json.value.default.type`, so deserialization always targets the local DTO regardless of what the producer's class was called. If you add a new event type, remember to register it the same way rather than relying on the type header.
 
 ## API Reference
 
@@ -134,7 +126,7 @@ Booking status moves through `PENDING → CONFIRMED / REJECTED` automatically on
 - **OpenFeign** for the synchronous calls payment-service makes to auth-service and hotel-service
 - **JJWT** for token signing/parsing, HMAC-SHA256
 - **Spring Boot Actuator + Micrometer/Prometheus** exposed on each service for health checks and metrics scraping
-- **Mailpit** as a local SMTP catcher — no real emails leave the network, so you can test the notification flow without configuring a mail provider
+- **Mailpit** as a local SMTP catcher - no real emails leave the network, so you can test the notification flow without configuring a mail provider
 - **Docker Compose** to run the whole stack locally
 
 ## Running it locally
@@ -147,8 +139,6 @@ cd hotel-booking-aggregator
 docker compose up --build
 ```
 
-Give it a minute — Postgres and Kafka need to pass their health checks before the dependent services are allowed to start, so the first boot is the slowest one.
-
 Once everything is up:
 
 | What | Where |
@@ -157,7 +147,7 @@ Once everything is up:
 | Mailpit inbox (see the confirmation emails) | http://localhost:8025 |
 | Auth / Hotel / Booking / Payment / Notification, if you need to hit a service directly | :8081 / :8082 / :8083 / :8084 / :8085 |
 
-A typical smoke test:
+A typical test:
 
 ```bash
 # 1. Register and log in
