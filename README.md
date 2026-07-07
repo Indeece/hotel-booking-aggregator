@@ -188,8 +188,8 @@ hotel-booking-aggregator/
 
 This was built in a few days as a focused exercise in getting the inter-service plumbing right, so a few things are intentionally left rough:
 
-- **No shared event schema.** As noted above, event DTOs are duplicated per service. Worth extracting into a shared library (or a schema registry) if this grows past a demo.
+- **No shared event schema.** event DTOs are duplicated per service. Worth extracting into a shared library (or a schema registry) if this grows past a demo.
 - **No automated tests yet.** Unit and integration tests are the next thing being added.
 - **Booking cancellation** has a status but no endpoint to trigger it.
-- **JWT secret and DB credentials are plaintext in compose files** — fine for local dev, not something to carry into any real deployment without a secrets manager.
-- **No API gateway rate limiting / circuit breaking** — Feign calls between payment-service and its dependencies currently just log and mark the transaction as failed on any exception, without retry or fallback logic.
+- **JWT secret and DB credentials are plaintext in compose files** - fine for local dev, not something to carry into any real deployment without a secrets manager.
+- **No API gateway rate limiting / circuit breaking** - Feign calls between payment-service and its dependencies currently just log and mark the transaction as failed on any exception, without retry or fallback logic.
