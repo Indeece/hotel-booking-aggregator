@@ -9,14 +9,12 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.indeece.paymentservice.dto.RoomDto;
-import ru.indeece.paymentservice.enums.PaymentStatus;
-import ru.indeece.paymentservice.utils.AuthServiceClient;
 import ru.indeece.paymentservice.dto.OrderCreatedEvent;
 import ru.indeece.paymentservice.dto.PaymentResultEvent;
 import ru.indeece.paymentservice.entities.Transaction;
+import ru.indeece.paymentservice.enums.PaymentStatus;
 import ru.indeece.paymentservice.repositories.TransactionRepository;
-import ru.indeece.paymentservice.utils.RoomServiceClient;
+import ru.indeece.paymentservice.utils.AuthServiceClient;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -29,61 +27,54 @@ public class PaymentProcessor {
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final TransactionRepository transactionRepository;
     private final AuthServiceClient authServiceClient;
-    private final RoomServiceClient roomServiceClient;
 
     @KafkaListener(topics = "order-created-events", groupId = "payment-group")
     @Transactional
     public void processPayment(ConsumerRecord<String, OrderCreatedEvent> record) {
         OrderCreatedEvent event = record.value();
         Long bookingId = event.bookingId();
-        log.info("Got a payment event: {}", event);
-
+        log.info("Got payment event: {}", event);
         boolean isSuccess = false;
-        BigDecimal amountToDeduct;
+        BigDecimal amountToDeduct = event.totalPrice();
 
         try {
-            RoomDto room = roomServiceClient.getRoomById(event.roomId());
-            amountToDeduct = room.pricePerNight();
-        } catch (FeignException.NotFound e) {
-            log.error("Room #{} not found in hotel-service", event.roomId());
-            return;
-        } catch (Exception e) {
-            log.error("Critical connection error with Hotel Service: {}", e.getMessage());
-            return;
-        }
-
-        try {
-            ResponseEntity<String> response = authServiceClient.deductBalance(event.userId(), amountToDeduct);
+            ResponseEntity<String> response = authServiceClient.deductBalance(
+                            event.userId(),
+                            amountToDeduct
+            );
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 isSuccess = true;
-                log.info("Payment successful! Auth Service response: {}", response.getBody());
+                log.info("Payment successful");
             }
-
         } catch (FeignException.BadRequest e) {
-            log.error("Payment refused for user #{}. Reason: {}", event.userId(), e.contentUTF8());
-            isSuccess = false;
+            log.error("Insufficient funds: {}", e.contentUTF8());
         } catch (FeignException.NotFound e) {
-            log.error("User #{} not found in the system", event.userId());
-            isSuccess = false;
+            log.error("User not found");
         } catch (Exception e) {
-            log.error("Critical connection error with Auth Service: {}", e.getMessage());
-            isSuccess = false;
+            log.error("Auth Service error: {}", e.getMessage());
         }
 
         PaymentStatus status = isSuccess ? PaymentStatus.SUCCESS : PaymentStatus.FAILURE;
 
-        transactionRepository.save(Transaction.builder()
-                .bookingId(bookingId)
-                .userId(event.userId())
-                .amount(BigDecimal.valueOf(5000.0))
-                .status(status)
-                .createdAt(LocalDateTime.now())
-                .build());
+        transactionRepository.save(
+                Transaction.builder()
+                        .bookingId(bookingId)
+                        .userId(event.userId())
+                        .amount(amountToDeduct)
+                        .status(status)
+                        .createdAt(LocalDateTime.now())
+                        .build()
+        );
 
-        String targetTopic = isSuccess ? "payment-success-events" : "payment-failed-events";
-        kafkaTemplate.send(targetTopic, String.valueOf(bookingId), new PaymentResultEvent(bookingId, status));
+        String topic = isSuccess ? "payment-success-events" : "payment-failed-events";
 
-        log.info("Handled payment event: {}", event);
+        kafkaTemplate.send(
+                topic,
+                String.valueOf(bookingId),
+                new PaymentResultEvent(bookingId, status)
+        );
+
+        log.info("Payment finished. Status={}", status);
     }
 }

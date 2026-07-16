@@ -43,3 +43,6 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+
+hotel-service:
+  url: http://hotel-service:8082
